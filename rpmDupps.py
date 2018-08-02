@@ -3,6 +3,10 @@ import sys
 import re
 import argparse
 
+def getDependencyLevel(dependency):
+	return (dependency.index('-') - 1) // 3
+
+
 def getRpmDependencies(rpmFolderPath, mapping):
 	dependencyTree=os.popen('mvn -f %s dependency:tree' % rpmFolderPath).read().splitlines()
 	startIdx=0
@@ -17,9 +21,22 @@ def getRpmDependencies(rpmFolderPath, mapping):
 		if jarName in deps:
 			endIdx=idx+1
 
-	dependencyTree[startIdx]= dependencyTree[startIdx].replace("+","\\")
+	dependencyTree[startIdx]= dependencyTree[startIdx]
 
-	return dependencyTree[startIdx:endIdx]
+	dependencyLevel=getDependencyLevel(dependencyTree[endIdx-1])
+
+	filteredDeps = [dependencyTree[endIdx-1].replace("|"," ").replace("\\","+")]
+	currentLevel = dependencyLevel
+	i = endIdx-2
+	while i >= startIdx-1:
+		lineLevel = getDependencyLevel(dependencyTree[i])
+		if lineLevel < currentLevel:
+			filteredDeps.append(dependencyTree[i].replace("|"," ").replace("\\","+"))
+			currentLevel=lineLevel
+		i-=1
+
+	return reversed(filteredDeps)
+	#return dependencyTree[startIdx:endIdx]
 
 
 parser = argparse.ArgumentParser(description='Analyze duplicate RPM file mappings (and their dependency tree) in target folders')
@@ -53,4 +70,5 @@ for mapping in reverseMap:
 				dependencyT = getRpmDependencies(rpmMapping[:rpmMapping.find("target/")],mapping[mapping.rfind("/")+1:])
 				for dep in dependencyT:
 					print(dep)
-			print("")
+				print("")
+			
