@@ -22,23 +22,33 @@ def getRpmDependencies(rpmFolderPath, mapping):
 	return dependencyTree[startIdx:endIdx]
 
 
-targetFolder = sys.argv[1] 
+parser = argparse.ArgumentParser(description='Analyze duplicate RPM file mappings (and their dependency tree) in target folders')
+parser.add_argument('files', nargs='+')
+parser.add_argument("-f","--filter", help="apply filter to mapping")
+parser.add_argument("-t","--noTree", help="disable dependency tree generation", action='store_true')
+
+args = parser.parse_args()
+
+targetFolder = ' '.join([str(x) for x in args.files]) 
 reverseMap = dict()
+if not args.filter is None:
+	filterPattern = re.compile(args.filter)
 
 rpmList=os.popen('find %s -name \'*.rpm\'' % targetFolder).read().splitlines()
 
 for rpm in rpmList:
 	mappingList=os.popen('rpm -qpl %s' % rpm).read().splitlines()
 	for mapping in mappingList:
-		reverseMap.setdefault(mapping, []).append(rpm)
+		if not args.filter is None or filterPattern.match(mapping):  
+			reverseMap.setdefault(mapping, []).append(rpm)
 
 for mapping in reverseMap:
 	if len(reverseMap[mapping]) > 1:
 		print("\033[7m>"+mapping+"\033[0m")
 		for rpmMapping in reverseMap[mapping]:
 			print("\033[1m-"+rpmMapping[rpmMapping.rfind("/")+1:]+"\033[0m")
-			if mapping.endswith(".jar"):
+			if mapping.endswith(".jar") and not args.noTree:
 				dependencyT = getRpmDependencies(rpmMapping[:rpmMapping.find("target/")],mapping[mapping.rfind("/")+1:])
 				for dep in dependencyT:
-					print dep
+					print(dep)
 			print("")
