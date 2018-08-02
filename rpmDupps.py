@@ -31,7 +31,9 @@ args = parser.parse_args()
 
 targetFolder = ' '.join([str(x) for x in args.files]) 
 reverseMap = dict()
-if not args.filter is None:
+
+filterPattern = re.compile("./*")
+if args.filter is not None:
 	filterPattern = re.compile(args.filter)
 
 rpmList=os.popen('find %s -name \'*.rpm\'' % targetFolder).read().splitlines()
@@ -39,7 +41,7 @@ rpmList=os.popen('find %s -name \'*.rpm\'' % targetFolder).read().splitlines()
 for rpm in rpmList:
 	mappingList=os.popen('rpm -qpl %s' % rpm).read().splitlines()
 	for mapping in mappingList:
-		if not args.filter is None or filterPattern.match(mapping):  
+		if filterPattern.match(mapping):  
 			reverseMap.setdefault(mapping, []).append(rpm)
 
 for mapping in reverseMap:
